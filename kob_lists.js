@@ -260,6 +260,39 @@
     });
   }
 
+
+  // Фильмы из «правильных переводов» Гоблина: при открытии торрентов сразу включаем фильтр «перевод: Гоблин / Пучков».
+  // Если в выдаче нет раздач с таким переводом, Лампа сама снимает фильтр и показывает всё. Фильтр можно сбросить вручную.
+  function goblinIds(){
+    var cache = loadCache(), ids = {};
+    DYN.forEach(function(s){
+      if (s[0] !== 'Переводы Гоблина' || s[1].indexOf('Смешные') === 0) return;
+      s[2].forEach(function(it){
+        var e = cache[itemKey(it)];
+        ((e && e.v) || []).forEach(function(c){ ids[c[0] + ':' + (c[5] === 1 ? 'tv' : 'movie')] = 1; });
+      });
+    });
+    return ids;
+  }
+  function presetVoice(movie){
+    try{
+      if (!movie || !movie.id || !Lampa.Storage.cache) return;
+      var cid = movie.id + ':' + (movie.number_of_seasons ? 'tv' : 'movie');
+      if (!goblinIds()[cid]) return;
+      var all = Lampa.Storage.cache('torrents_filter_data', 500, {});
+      if (all[cid]) return;                      // пользователь уже настраивал фильтр для этого фильма — не трогаем
+      all[cid] = {voice: ['Гоблин', 'Пучков']};
+      Lampa.Storage.set('torrents_filter_data', all);
+    }catch(e){}
+  }
+  (function(){
+    var push = Lampa.Activity.push;
+    Lampa.Activity.push = function(o){
+      if (o && o.component === 'torrents' && o.movie) presetVoice(o.movie);
+      return push.apply(this, arguments);
+    };
+  })();
+
   function addMenu(){
     [MAIN].concat(EXT).forEach(function(g){
       var item = $('<li class="menu__item selector" data-action="kob_' + (g.part ? 'x' + EXT.indexOf(g) : 'lists') + '"><div class="menu__ico"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">' + g.svg + '</svg></div><div class="menu__text">' + g.name + '</div></li>');
