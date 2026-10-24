@@ -1,5 +1,5 @@
 /* «КОБ-список» для Lampa: подборки КОБ-Медиа, переводы Гоблина, франшизы и режиссёры.
-   Пункт «КОБ-список» в левом меню → часть → раздел → карточки фильмов. */
+   Пункты левого меню: «КОБ-список», «Франшизы», «Режиссёры», «Переводы Гоблина» → раздел → карточки фильмов. */
 (function(){
   'use strict';
   if (window.kob_lists_plugin) return;
@@ -184,37 +184,52 @@
   }
   function allIdx(){ var a = []; for (var i = 0; i < NDATA + DYN.length; i++) a.push(i); return a; }
 
-  function partsMenu(){
+  // отдельные пункты левого меню; всё остальное остаётся во вкладке «КОБ-список»
+  var EXT = [
+    {name: 'Франшизы',        part: 'Франшизы',        svg: '<rect x="3" y="4" width="7" height="16" rx="1"/><rect x="14" y="4" width="7" height="16" rx="1"/>'},
+    {name: 'Режиссёры',       part: 'Режиссёры',       svg: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>'},
+    {name: 'Переводы Гоблина', part: 'Переводы Гоблина', svg: '<path d="M4 6h16M4 12h16M4 18h10"/>'}
+  ];
+  var MAIN = {name: 'КОБ-список', svg: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18M7 5v4M12 5v4M17 5v4"/>'};
+  function isExt(p){ return EXT.some(function(e){ return e.part === p; }); }
+  function inGroup(i, g){ var p = secInfo(i)[0]; return g.part ? p === g.part : !isExt(p); }
+
+  function partsMenu(g){
+    g = g || MAIN;
     var parts = [];
-    allIdx().forEach(function(i){ var p = secInfo(i)[0]; if (parts.indexOf(p) < 0) parts.push(p); });
+    allIdx().forEach(function(i){ if (inGroup(i, g)){ var p = secInfo(i)[0]; if (parts.indexOf(p) < 0) parts.push(p); } });
+    if (parts.length === 1) return sectionsMenu(parts[0], g);
     Lampa.Select.show({
-      title: 'КОБ-список',
+      title: g.name,
       items: parts.map(function(p){
         var k = 0, n = 0, fixed = true;
-        allIdx().forEach(function(i){ if (secInfo(i)[0] === p){ k++; n += secWeight(i); if (i >= NDATA && !secInfo(i)[2].every(Array.isArray)) fixed = false; } });
+        allIdx().forEach(function(i){ if (inGroup(i, g) && secInfo(i)[0] === p){ k++; n += secWeight(i); if (i >= NDATA && !secInfo(i)[2].every(Array.isArray)) fixed = false; } });
         return {title: p, subtitle: k + ' разд.' + (fixed ? ' · ' + n + ' фильмов' : ''), part: p};
       }),
-      onSelect: function(a){ sectionsMenu(a.part); },
+      onSelect: function(a){ sectionsMenu(a.part, g); },
       onBack: function(){ Lampa.Controller.toggle('menu'); }
     });
   }
 
-  function sectionsMenu(part){
+  function sectionsMenu(part, g){
     var items = [];
     allIdx().forEach(function(i){ var s = secInfo(i); if (s[0] === part && s[2].length) items.push({title: s[1], subtitle: secLabel(i), idx: i}); });
     if (items.length === 1) return openSection(items[0].idx);
+    var single = g && g.part;
     Lampa.Select.show({
       title: part,
       items: items,
       onSelect: function(a){ openSection(a.idx); },
-      onBack: function(){ partsMenu(); }
+      onBack: function(){ if (single) Lampa.Controller.toggle('menu'); else partsMenu(g); }
     });
   }
 
   function addMenu(){
-    var item = $('<li class="menu__item selector" data-action="kob_lists"><div class="menu__ico"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18M7 5v4M12 5v4M17 5v4"/></svg></div><div class="menu__text">КОБ-список</div></li>');
-    item.on('hover:enter', partsMenu);
-    $('.menu .menu__list').eq(0).append(item);
+    [MAIN].concat(EXT).forEach(function(g){
+      var item = $('<li class="menu__item selector" data-action="kob_' + (g.part ? 'x' + EXT.indexOf(g) : 'lists') + '"><div class="menu__ico"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">' + g.svg + '</svg></div><div class="menu__text">' + g.name + '</div></li>');
+      item.on('hover:enter', function(){ partsMenu(g); });
+      $('.menu .menu__list').eq(0).append(item);
+    });
   }
 
   if (window.appready) addMenu();
